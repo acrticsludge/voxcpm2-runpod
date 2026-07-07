@@ -76,14 +76,21 @@ curl -X POST http://127.0.0.1:8000/run \
 3. Set the GPU type to one of the supported options: RTX A4000, RTX 3090, RTX A5000, or L4.
 4. Set the minimum workers to 0 to allow scale to zero.
 5. Configure the environment variables below.
+6. For the basic template, keep these values set explicitly:
+   - `PRELOAD_MODEL_ON_STARTUP=false`
+   - `CACHE_DIR=/tmp/voxcpm-cache`
+   - `HF_HOME=/tmp/huggingface`
+
+If you deploy from GitHub, add those same values in the GitHub deployment environment or the Runpod template environment section so the container receives them at startup.
 
 ## Environment variables
 
 - `HF_TOKEN` – optional Hugging Face access token.
 - `MODEL_ID` – model repository id, defaults to `openbmb/VoxCPM2`.
 - `LOG_LEVEL` – logging level, defaults to `INFO`.
-- `CACHE_DIR` – directory used for model caching, defaults to `/cache/voxcpm`.
-- `PRELOAD_MODEL_ON_STARTUP` – set to `true` to load the model during worker boot so the first request is faster; defaults to `true`.
+- `CACHE_DIR` – directory used for model caching, defaults to `/tmp/voxcpm-cache`.
+- `HF_HOME` – Hugging Face cache directory, defaults to `/tmp/huggingface`.
+- `PRELOAD_MODEL_ON_STARTUP` – set to `true` only if you want the model loaded during worker boot; defaults to `false` for basic Runpod templates to avoid startup churn.
 - `DEBUG` – enable verbose behavior for local debugging when set to `true`.
 
 ## Choosing GPUs

@@ -1,5 +1,20 @@
+import os
+import sys
+import types
 import unittest
+from unittest.mock import patch
 
+voxcpm_stub = types.ModuleType("voxcpm")
+
+
+class DummyVoxCPM:
+    pass
+
+
+voxcpm_stub.VoxCPM = DummyVoxCPM
+sys.modules.setdefault("voxcpm", voxcpm_stub)
+
+from config import get_config
 from handler import build_error_response, health_check, validate_request
 
 
@@ -24,6 +39,11 @@ class HandlerTests(unittest.TestCase):
         self.assertIn("status", payload)
         self.assertIn("worker", payload)
         self.assertIn("gpu", payload)
+
+    def test_defaults_to_lazy_startup(self):
+        with patch.dict(os.environ, {}, clear=True):
+            config = get_config()
+            self.assertFalse(config["preload_model_on_startup"])
 
 
 if __name__ == "__main__":

@@ -5,8 +5,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     MODEL_ID=openbmb/VoxCPM2 \
-    CACHE_DIR=/cache/voxcpm \
-    HF_HOME=/cache/huggingface \
+    CACHE_DIR=/tmp/voxcpm-cache \
+    HF_HOME=/tmp/huggingface \
+    PRELOAD_MODEL_ON_STARTUP=false \
     LOG_LEVEL=INFO
 
 WORKDIR /app
@@ -23,7 +24,7 @@ RUN python3 -m pip install --upgrade pip setuptools wheel \
 
 COPY . /app
 
-RUN mkdir -p /cache/voxcpm /cache/huggingface \
+RUN mkdir -p /tmp/voxcpm-cache /tmp/huggingface \
     && python3 -m compileall /app
 
 EXPOSE 8000
