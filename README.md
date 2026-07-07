@@ -71,6 +71,8 @@ curl -X POST http://127.0.0.1:8000/run \
 
 ## Runpod deployment
 
+### Serverless
+
 1. Create a new Runpod Serverless template.
 2. Use the container image you built and pushed.
 3. Set the GPU type to one of the supported options: RTX A4000, RTX 3090, RTX A5000, or L4.
@@ -80,6 +82,16 @@ curl -X POST http://127.0.0.1:8000/run \
    - `PRELOAD_MODEL_ON_STARTUP=false`
    - `CACHE_DIR=/tmp/voxcpm-cache`
    - `HF_HOME=/tmp/huggingface`
+
+### Pod
+
+1. Launch a Runpod Pod with the same container image.
+2. Expose port `8000`.
+3. Start the container with the default entrypoint, which now runs a long-lived Flask HTTP service.
+4. Use the following health and inference routes:
+   - `GET /health`
+   - `POST /run`
+   - `POST /infer`
 
 If you deploy from GitHub, add those same values in the GitHub deployment environment or the Runpod template environment section so the container receives them at startup.
 
