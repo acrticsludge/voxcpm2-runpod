@@ -28,4 +28,4 @@ RUN mkdir -p /cache/voxcpm /cache/huggingface \
 
 EXPOSE 8000
 
-CMD ["python3", "handler.py"]
+CMD ["python3", "runpod_entrypoint.py"]

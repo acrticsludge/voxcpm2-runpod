@@ -100,6 +100,8 @@ The first worker start downloads the model into the cache directory and loads it
 
 The worker exposes a lightweight health response through the same handler entrypoint. For a basic readiness probe, send a payload like:
 
+The container entrypoint is [runpod_entrypoint.py](runpod_entrypoint.py), which calls the Runpod startup hook explicitly.
+
 ```bash
 curl -X POST http://127.0.0.1:8000/run \
   -H 'Content-Type: application/json' \
