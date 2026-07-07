@@ -1,10 +1,6 @@
-import base64
-import json
 import logging
 import os
 import sys
-import tempfile
-import traceback
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -25,6 +21,19 @@ logger = logging.getLogger("voxcpm.handler")
 
 def build_error_response(message: str, status_code: int = 400) -> Dict[str, Any]:
     return {"error": message, "statusCode": status_code}
+
+
+def health_check() -> Dict[str, Any]:
+    status = service.get_status()
+    return {
+        "status": "ok" if status["loaded"] or not status["gpu"]["available"] else "warming",
+        "worker": "voxcpm2-runpod",
+        "model_loaded": status["loaded"],
+        "device": status["device"],
+        "gpu": status["gpu"],
+        "cache_dir": status["cache_dir"],
+        "model_id": status["model_id"],
+    }
 
 
 def validate_request(payload: Any) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -74,16 +83,24 @@ def validate_request(payload: Any) -> Tuple[Optional[Dict[str, Any]], Optional[s
 
 
 def handler(job: Dict[str, Any]) -> Dict[str, Any]:
-    logger.info("request.received", extra={"event": "request.received", "job_id": job.get("id")})
+    job_id = job.get("id") or job.get("requestId") or job.get("job_id")
+    logger.info("request.received", extra={"event": "request.received", "job_id": job_id})
     payload = job.get("input") or {}
+
+    if isinstance(payload, dict) and payload.get("health") is True:
+        return health_check()
+
     request, error = validate_request(payload)
     if error is not None:
         logger.warning("request.invalid", extra={"event": "request.invalid", "error": error})
         return build_error_response(error)
 
     try:
-        model = service.load()
-        logger.info("request.processing", extra={"event": "request.processing", "text_length": len(request["text"])})
+        service.load()
+        logger.info(
+            "request.processing",
+            extra={"event": "request.processing", "text_length": len(request["text"]), "job_id": job_id},
+        )
         audio, sample_rate = service.generate(
             text=request["text"],
             reference_wav_path=request["reference_wav_path"],
@@ -98,7 +115,7 @@ def handler(job: Dict[str, Any]) -> Dict[str, Any]:
         audio_b64 = encode_wav_to_base64(output_path)
         return {"audio": audio_b64}
     except Exception as exc:
-        logger.exception("request.failed", extra={"event": "request.failed", "error": str(exc)})
+        logger.exception("request.failed", extra={"event": "request.failed", "error": str(exc), "job_id": job_id})
         return build_error_response(f"Inference failed: {exc}", 500)
 
 
@@ -108,5 +125,14 @@ if __name__ == "__main__":
 
     config = get_config()
     logger.setLevel(getattr(logging, config["log_level"], logging.INFO))
-    logger.info("startup", extra={"event": "startup", "model_id": config["model_id"], "cache_dir": config["cache_dir"]})
+    logger.info(
+        "startup",
+        extra={
+            "event": "startup",
+            "model_id": config["model_id"],
+            "cache_dir": config["cache_dir"],
+            "preload_model_on_startup": config["preload_model_on_startup"],
+        },
+    )
+    service.preload_on_startup()
     runpod.serverless.start({"handler": handler})

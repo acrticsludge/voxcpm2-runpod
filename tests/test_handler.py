@@ -1,6 +1,6 @@
 import unittest
 
-from handler import build_error_response, validate_request
+from handler import build_error_response, health_check, validate_request
 
 
 class HandlerTests(unittest.TestCase):
@@ -18,6 +18,12 @@ class HandlerTests(unittest.TestCase):
         payload = build_error_response("boom")
         self.assertIn("error", payload)
         self.assertEqual(payload["error"], "boom")
+
+    def test_health_check_shape(self):
+        payload = health_check()
+        self.assertIn("status", payload)
+        self.assertIn("worker", payload)
+        self.assertIn("gpu", payload)
 
 
 if __name__ == "__main__":

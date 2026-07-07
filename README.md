@@ -83,6 +83,8 @@ curl -X POST http://127.0.0.1:8000/run \
 - `MODEL_ID` – model repository id, defaults to `openbmb/VoxCPM2`.
 - `LOG_LEVEL` – logging level, defaults to `INFO`.
 - `CACHE_DIR` – directory used for model caching, defaults to `/cache/voxcpm`.
+- `PRELOAD_MODEL_ON_STARTUP` – set to `true` to load the model during worker boot so the first request is faster; defaults to `true`.
+- `DEBUG` – enable verbose behavior for local debugging when set to `true`.
 
 ## Choosing GPUs
 
@@ -92,7 +94,19 @@ curl -X POST http://127.0.0.1:8000/run \
 
 ## Cold starts
 
-The first worker start downloads the model into the cache directory and loads it into GPU memory. This is the longest step. Later starts reuse the cache automatically.
+The first worker start downloads the model into the cache directory and loads it into GPU memory. This is the longest step. Later starts reuse the cache automatically. Set `PRELOAD_MODEL_ON_STARTUP=true` to make the worker warm up during boot rather than on the first request.
+
+## Health checks
+
+The worker exposes a lightweight health response through the same handler entrypoint. For a basic readiness probe, send a payload like:
+
+```bash
+curl -X POST http://127.0.0.1:8000/run \
+  -H 'Content-Type: application/json' \
+  -d '{"input":{"health":true}}'
+```
+
+A healthy worker returns a JSON object with the worker name, model load state, device, and GPU details.
 
 ## Logs
 
@@ -126,6 +140,8 @@ The handler logs:
 
 Use a new tag whenever you change the runtime or dependencies.
 
+For a GitHub-to-Runpod flow, build and publish an image tag that matches the release version, then update the Runpod template to use the new image tag. Keep the old tag around until the new deployment has been verified.
+
 ```bash
 docker build -t voxcpm2-runpod:<version> .
 ```
@@ -151,6 +167,7 @@ Performance varies by GPU. In the official project, VoxCPM2 is designed for GPU 
 - Do not bake secrets into the image.
 - Pass tokens through environment variables.
 - Keep the cache directory on a persistent volume if you need reuse across image upgrades.
+- Prefer short-lived credentials and rotate Hugging Face tokens if you grant access to gated models.
 
 ## FAQ
 

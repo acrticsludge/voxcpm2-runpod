@@ -2,7 +2,7 @@ import logging
 import os
 import threading
 import time
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -26,6 +26,54 @@ class VoxCPMService:
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "mps"
         return "cpu"
+
+    def get_gpu_status(self) -> Dict[str, Any]:
+        if not torch.cuda.is_available():
+            return {"available": False, "device_count": 0, "device_name": None}
+
+        device_count = torch.cuda.device_count()
+        device_name = torch.cuda.get_device_name(0) if device_count else None
+        try:
+            free_memory, total_memory = torch.cuda.mem_get_info()
+            memory = {
+                "free_bytes": int(free_memory),
+                "total_bytes": int(total_memory),
+                "free_gb": round(free_memory / (1024**3), 2),
+                "total_gb": round(total_memory / (1024**3), 2),
+            }
+        except Exception:
+            memory = None
+
+        return {
+            "available": True,
+            "device_count": int(device_count),
+            "device_name": device_name,
+            "memory": memory,
+        }
+
+    def get_status(self) -> Dict[str, Any]:
+        return {
+            "loaded": self._model is not None,
+            "initializing": self._init_started,
+            "device": self.detect_device(),
+            "gpu": self.get_gpu_status(),
+            "model_id": self.config["model_id"],
+            "cache_dir": self.config["cache_dir"],
+        }
+
+    def preload_on_startup(self) -> Dict[str, Any]:
+        if not self.config.get("preload_model_on_startup", True):
+            return self.get_status()
+
+        try:
+            self.load()
+            return self.get_status()
+        except Exception as exc:
+            logger.exception(
+                "startup.validation.failed",
+                extra={"event": "startup.validation.failed", "error": str(exc)},
+            )
+            return {**self.get_status(), "startup_error": str(exc)}
 
     def load(self, force: bool = False) -> VoxCPM:
         if self._model is not None and not force:
